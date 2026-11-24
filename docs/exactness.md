@@ -1,7 +1,7 @@
 # What "exact" means here, and why it holds
 
-This is the claim the paper makes about crossing a seam, the argument for it, the code each
-step of the argument rests on, and what the claim does not say. It refers to
+This note states the claim the paper makes about crossing a seam, gives the argument for it
+with the code each step rests on, and states the scope of the claim. It refers to
 `crates/groxel/src/trace.rs` by function name.
 
 ## Setting
@@ -16,23 +16,25 @@ it starts in. Two traces of it are compared.
 - **The uncut trace.** The world is unrolled along the ray: each time the ray would cross a
   seam, the room beyond is laid down next to the current one in the starting frame. The ray is
   then traced in that one frame with no seam on the way, by this engine's own stepper: the
-  expressions of `Cursor::new`, counted steps, and ties to the later axis. "Amanatides and
-  Woo's algorithm" does not fix the bits, and this does.
+  expressions of `Cursor::new`, counted steps, and ties to the later axis. The name
+  "Amanatides and Woo's algorithm" leaves the bits of the result open, and this definition
+  fixes them.
 - **The glued trace.** The engine's cursor in the world as built, crossing seams.
 
-Three points make the uncut trace exact enough to check.
+The comparison depends on three properties of this definition:
 
 - **It is defined step by step, and needs no uncut world to exist.** The uncut voxel `v`
   corresponds to the glued voxel `M(v)`, where `M` composes the maps of the seams crossed so
-  far. The test worlds do have one uncut world each (`CutWorld::whole` and `Blocks::whole` in
-  the tests, `unrolled` in the experiments crate). A world with a seam on part of a face, a
-  one-way link, a mirror, or rooms that would overlap when laid down has none, and the
-  definition by induction still applies to it.
+  far. Each test world has one uncut world (`CutWorld::whole` and `Blocks::whole` in the tests,
+  `unrolled` in the experiments crate). A world with a seam on part of a face, a one-way link,
+  a mirror, or rooms that would overlap when laid down has none, and the definition by
+  induction still applies to it.
 - **It is laid out in the frame of the starting room, at the starting voxel's coordinates.** A
   plain tracer can change its result when its world is turned, because ties go by axis number
   and an origin may round when it is written in another frame. A ray that starts in a turned
-  room agrees with a turned copy of the original world, not with the original.
-- **It is compared at every step**, not only where the ray stops.
+  room is therefore compared with a copy of the original world turned the same way.
+- **It is compared after every step of the ray.** The claim below is about each step, and the
+  final hit follows from it.
 
 Both use the same per-axis state: `step` (which way the ray goes along the axis), `t_delta` (the
 distance between faces along it), `t_first` (the distance to the first face), `count` (faces
@@ -71,9 +73,9 @@ crossed so far, and let `σ_i` be the sign the composed turn gives axis `i`. The
    `t_max` first; if equal, larger `rank` first". Ranks are distinct, and `t_max` is never NaN
    (`t_delta` is never negative and never a NaN, `Cursor::new` clamps `t_max` with `max(0.0)`,
    which discards a NaN, and the product in step 4 is formed only after `count` is at least 1),
-   so this is a total order on the three axes. It reads only the pairs
-   `(t_max, rank)`, never an axis number. By the invariant the glued pairs are the uncut
-   pairs, so if the uncut trace chooses axis `i` the glued trace chooses `π(i)`. In the
+   and the order is therefore total on the three axes. It reads the pairs `(t_max, rank)` and
+   no axis number. By the invariant the glued pairs are the uncut pairs, and if the uncut trace
+   chooses axis `i` the glued trace chooses `π(i)`. In the
    uncut trace `rank` is the axis number, which is the tie rule of a tracer that has no seams.
 
 3. **Both report the same distance.** The distance of a step is the chosen axis's `t_max`, read
@@ -88,63 +90,64 @@ crossed so far, and let `σ_i` be the sign the composed turn gives axis `i`. The
 5. **A seam preserves the invariant.** If the face crossed has a seam with turn `R`, `advance`
    re-reads the state in the new frame: for each new axis `j`, with `(src, sign) =
    R.source(j)`, it sets `step[j] = step[src] * sign` and copies `t_max[src]`, `t_delta[src]`,
-   `t_first[src]`, `count[src]` and `rank[src]` to `j`. Nothing is recalculated. The invariant holds again with `π` followed
-   by `R`'s permutation and `σ` multiplied by `R`'s signs.
+   `t_first[src]`, `count[src]` and `rank[src]` to `j`, and it recalculates nothing. The
+   invariant holds again with `π` followed by `R`'s permutation and `σ` multiplied by `R`'s
+   signs.
 
 6. **The voxels correspond.** The glued trace's voxel moves by `step` along the chosen axis and,
-   at a seam, through the seam's integer map. Both are integer operations, so the voxel is
-   the image, under the composed map, of the uncut trace's voxel. The two traces
+   at a seam, through the seam's integer map. Both are integer operations, and the voxel is
+   therefore the image, under the composed map, of the uncut trace's voxel. The two traces
    therefore read the same materials, stop at the same step, and by step 3 at the same distance.
    The chosen axis has a `step` of 1 or -1: an axis with a `step` of 0 has an infinite `t_max`,
    and `advance` returns before it would cross a face at infinity.
 
-The stopping rules do not disturb this. `trace` stops when the next distance exceeds `max_t` or
-is infinite, or when the step count reaches `max_steps`. With `skip` set it also looks past a
-solid overlay voxel of one entity while the distance is below `skip.near`. All of these are
-functions of quantities already shown equal: the distance, the step count, and what is in the
-voxel.
+The stopping rules preserve this correspondence, because each is a function of quantities
+already shown equal: the distance, the step count and the content of the voxel. `trace` stops
+when the next distance exceeds `max_t` or is infinite, or when the step count reaches
+`max_steps`. With `skip` set it also looks past a solid overlay voxel of one entity while the
+distance is below `skip.near`.
 
-The skip rule reads the distance and not the number of seams crossed, although a count of seams
-would tell a viewer's own figure from its image more sharply. The uncut trace crosses no seams,
-so a rule that read the count would stop the two traces in different places: a ray from one side
-of a cut to a voxel of the viewer's on the other side would stop there in the cut world and go
-on in the uncut one.
+The skip rule reads the distance and does not read the number of seams crossed, although a
+count of seams would tell a viewer's own figure from its image at shorter range. The uncut
+trace crosses no seams, and a rule that read the count would stop the two traces in different
+places: a ray from one side of a cut to a voxel of the viewer's on the other side would stop
+there in the cut world and continue in the uncut one.
 
 ## What the claim rests on
 
-- **The turn is a signed permutation.** Each axis of the old frame is one axis of the new, so
-  per-axis quantities can move with their axis. A general rotation mixes axes, and the state
-  would have to be recomputed. This is why the engine admits the 48 orientations and no others.
+- **The turn is a signed permutation.** Each axis of the old frame is one axis of the new, and
+  per-axis quantities can therefore move with their axis. A general rotation mixes the axes,
+  and the state would have to be recomputed, which is why the engine admits the 48 orientations
+  and no others.
 - **The tie rule travels with the ray.** A ray through a voxel edge reaches two faces at the
   same distance, and which is crossed first decides which voxel is visited. If ties were broken
   by current axis number, a seam, which renumbers the axes, would change the answer. A test
   found this before `rank` was added: a ray visited 9 voxels in the cut world and 10 in
   the uncut one.
 - **Arithmetic is IEEE 754 single precision, one operation at a time.** Rust does not contract
-  `a * b + c` into a fused multiply-add and does not reorder floating-point operations, so both
-  traces execute the same additions. A target that keeps `f32` values in wider registers (x87)
-  is outside the argument and outside the tests.
+  `a * b + c` into a fused multiply-add and does not reorder floating-point operations, and
+  both traces therefore execute the same additions. A target that keeps `f32` values in wider
+  registers (x87) is outside the argument. The tests have run on `aarch64-apple-darwin`.
 
-## What the claim does not say
+## Scope of the claim
 
-- **It is not a claim of accuracy.** The uncut trace is itself a single-precision computation,
-  and the glued trace reproduces its error, whatever that is. With the usual running total
-  (`t_max += t_delta`) the error grows with the square of the distance: a median of 0.09 voxels
-  at 5,400 voxels, with 14% of rays ending on another surface (`experiments/README.md`). A
-  permuting trace in that form agrees with its uncut trace bit for bit and is less accurate than
-  a tracer that recomputes its state at each seam. This is why the cursor counts its steps: the
-  median error at 5,400 voxels is then 0.0002 voxels, as small as that of the best recomputing
-  method measured. In rays that end on another surface the engine has 6 of 20,000 there, and
-  the methods measured have 0 to 11. The argument above does not depend on the form. It goes through for a running total
-  with step 4 replaced by the one addition, and the experiments crate checks both forms.
-- **It is not a claim about the hit point.** The cursor also carries the ray's origin and
-  direction into each new frame (`origin = map.point(origin)`), for callers that want the hit
-  point in the frame of the voxel hit. That is floating-point arithmetic and rounds. The
-  traversal never reads it. The tests allow the carried point 0.0001 voxels at one crossing.
-- **It is not a claim about shading.** A renderer computes on the hit point. In the frame test
-  (`groxel-render/tests/render.rs`) no pixel of 248,832 differed from the uncut world's frame,
-  but nothing in the argument above guarantees that, and the test itself allows a frame 12
-  pixels that differ by more than one level.
+- **Agreement and accuracy.** The claim is agreement between two single-precision traces, and
+  the glued trace reproduces the error of the uncut trace. With the usual running total
+  (`t_max += t_delta`) that error grows with the square of the distance: at 5,398 voxels its
+  median is 0.087 voxels and 2,883 of 20,000 rays end on another surface
+  (`experiments/README.md`). A permuting trace in that form agrees with its uncut trace bit for
+  bit and is less accurate than a tracer that recomputes its state at each seam. The cursor
+  therefore counts its steps, and its median error at that distance is 0.0002 voxels, as small
+  as that of the most accurate recomputing method measured. The argument above holds for either
+  form, with step 4 replaced by the one addition for a running total, and the experiments crate
+  checks both.
+- **The hit point.** The cursor carries the ray's origin and direction into each new frame
+  (`origin = map.point(origin)`) for callers that want the hit point in the frame of the voxel
+  hit. That arithmetic is floating-point and rounds, and the traversal never reads its result.
+  The tests allow the carried point 0.0001 voxels at one crossing.
+- **Shading.** A renderer computes on the hit point, which the argument does not cover. In the
+  frame test (`crates/groxel-render/tests/render.rs`) no pixel of 248,832 differs from the whole
+  world's frame, with a tolerance of 12 pixels a frame.
 
 ## Evidence
 
@@ -163,15 +166,9 @@ same bits.
 
 The two experiments rows compare where a ray stops, after a gate that ignores solid voxels on
 the way. The order of two tied faces rarely changes that, and the quarter-turn space reaches
-only the four frames that turn about one axis. With ties broken by the current axis number, the experiment
-still finds the engine equal to its uncut trace on 219,998 of 220,000 rays. Those rows are
-evidence for the float half of the claim over many crossings, and they are weak evidence for the
-tie rule. The blocks test is the one that holds the tie rule after many seams: it fails with
-ties broken that way, as does the lattice-direction test. Each test in the table was checked to fail when
-the thing it guards is broken.
-
-## Limits
-
-- The tests have run on `aarch64-apple-darwin` only. The argument assumes IEEE 754 single
-  precision with one operation at a time, which holds on x86-64 with SSE and on WebAssembly,
-  and neither has been run.
+only the four frames that turn round one axis. With ties broken by the current axis number,
+the experiment still finds the engine equal to its uncut trace on 219,998 of 220,000 rays.
+Those rows are evidence for the floating-point half of the claim over many crossings, and they
+are weak evidence for the tie rule. The blocks test holds the tie rule after many seams: it
+fails with ties broken by the current axis number, as does the lattice-direction test. Each
+test in the table was checked to fail when the thing it guards is broken.

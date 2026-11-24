@@ -87,10 +87,10 @@ test, which cuts a world, turns one half by each of the 48 symmetries and glues 
 every subsystem (\cref{sec:test}). On 220{,}000 rays that cross up to 1{,}000 gluings, our
 traversal agrees with the uncut trace on every ray, bit for bit. Its median distance error at
 1{,}000 crossings is $1.7\times10^{-4}$ voxels, against $2.4\times10^{-4}$ for the most accurate
-of the three earlier methods, and a crossing costs 25\,ns against 41 to 43\,ns for recomputation.
-In 8 pictures of the test space, 1{,}843{,}200 pixels, it differs from the uncut trace in no
-pixel, where the earlier methods differ in 6 to 23 and a nudged position in up to 2{,}279.
-The idea of a voxel world with turned gluings is not ours; \cref{sec:related} states what is.
+of the three earlier methods. In 8 pictures of the test space, 1{,}843{,}200 pixels, it differs
+from the uncut trace in no pixel, where the earlier methods differ in 6 to 23 and a nudged
+position in up to 2{,}279. Voxel worlds with turned gluings exist already, and
+\cref{sec:related} separates what this paper adds from them.
 
 \section{Rooms and seams}
 \label{sec:model}
@@ -289,8 +289,9 @@ not turned.}
 \label{tab:tests}
 \end{table}
 
-One cut holds the rule for ties through one seam only, and a comparison of where rays stop is a
-weak test of that rule. A second ray test therefore cuts a cube of 15 voxels a side into 125
+A world with one cut tests the rule for ties across one seam only, and a comparison of final
+hits rarely detects a wrong order of two tied faces. A second ray test therefore cuts a cube of
+15 voxels a side into 125
 blocks, turns each block by a random orientation, and compares the two cursors after every face
 they cross: distance, voxel, entry face and material, for random rays and for rays along lattice
 directions with unequal components, which cross up to a dozen seams. With ties broken by the
@@ -298,12 +299,11 @@ current axis number, this test and the lattice-direction rays of \cref{tab:tests
 measurement of \cref{sec:measurements}, which compares final hits, still finds agreement on
 219{,}998 of 220{,}000 rays.
 
-The property also rejected a rule that was wrong by design. A trace looks past the voxels of
-one figure near its start, so that a viewer does not see the inside of its own figure, and our
-first rule also required the ray to have crossed a seam before that figure counted. The number
-of seams a ray has crossed differs between the cut world and the whole one, and a viewer
-standing across a seam saw its own voxels on the far side of it. A check of the argument of
-\cref{prop:agreement} against the code found this, and the rule now reads the distance alone.
+The sprite rays of \cref{tab:tests} include rays that look past the voxels of one figure near
+their start, as a renderer does so that a viewer does not see the inside of its own figure. The
+rule for this reads the distance travelled and not the number of seams crossed: that number
+differs between the cut world and the whole one, and under a rule that reads it a viewer
+standing across a seam sees its own voxels on the far side, which the test rejects.
 
 \section{Measurements}
 \label{sec:measurements}
@@ -425,7 +425,7 @@ method in the table on long rays. With counted steps the median error at 1{,}000
 crossings is $1.7\times10^{-4}$ voxels and 7 rays are off, against $2.4\times10^{-4}$ and 12 for
 recomputation from the origin and $4.2\times10^{-3}$ and 1 for recomputation at the crossing
 point. Up to 200 crossings the engine and the two recomputing methods each put at most one ray in
-20{,}000 on another surface. The matrix per cell holds its position within one voxel of the
+20{,}000 on another surface. The matrix per cell maintains its position within one voxel of the
 origin of its coordinates, and it finds the surface as reliably as any method in the table: no
 ray is off up to 200 crossings and 4 are off at 1{,}000. Its distance, which HyperRogue uses for fog only, is a sum and drifts as the running total does,
 to a median error of $2.9\times10^{-2}$ voxels at 1{,}000 crossings. Nudge and floor is off for 47 to 74 rays in 20{,}000 with
