@@ -1,0 +1,19 @@
+[package]
+name = "groxel-walk"
+version = "0.0.1"
+description = "Walk around the groxel demo worlds in a window."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+# The only crate in the workspace with dependencies outside it: a window and
+# a way to put pixels in it.
+[dependencies]
+groxel = { path = "../groxel", version = "0.0.1" }
+groxel-app = { path = "../groxel-app", version = "0.0.1" }
+groxel-body = { path = "../groxel-body", version = "0.0.1" }
+groxel-render = { path = "../groxel-render", version = "0.0.1" }
+softbuffer = "0.4"
+winit = "0.30"

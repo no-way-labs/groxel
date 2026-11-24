@@ -1,0 +1,13 @@
+[package]
+name = "groxel-experiments"
+version = "0.0.0"
+description = "Measurements for the groxel paper. Not published."
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+groxel = { path = "../crates/groxel" }
+groxel-render = { path = "../crates/groxel-render" }

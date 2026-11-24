@@ -1,0 +1,43 @@
+part,method,side,crossings_per_step,ns_per_step
+crossing,engine,4,0.25000,13.255
+crossing,engine,8,0.12500,10.904
+crossing,engine,16,0.06250,9.018
+crossing,engine,32,0.03125,7.882
+crossing,engine,64,0.01564,7.399
+crossing,perm-count,4,0.25000,13.543
+crossing,perm-count,8,0.12500,11.190
+crossing,perm-count,16,0.06250,9.235
+crossing,perm-count,32,0.03125,8.096
+crossing,perm-count,64,0.01564,7.548
+crossing,perm-run,4,0.25001,12.549
+crossing,perm-run,8,0.12500,10.192
+crossing,perm-run,16,0.06250,8.395
+crossing,perm-run,32,0.03125,7.318
+crossing,perm-run,64,0.01564,6.843
+crossing,recompute,4,0.25000,17.094
+crossing,recompute,8,0.12500,12.952
+crossing,recompute,16,0.06250,9.871
+crossing,recompute,32,0.03125,7.996
+crossing,recompute,64,0.01564,7.121
+crossing,fishpye,4,0.25000,17.148
+crossing,fishpye,8,0.12500,12.853
+crossing,fishpye,16,0.06250,9.787
+crossing,fishpye,32,0.03125,7.992
+crossing,fishpye,64,0.01564,7.069
+crossing,floor-1e-2,4,0.25040,16.710
+crossing,floor-1e-2,8,0.12511,12.720
+crossing,floor-1e-2,16,0.06253,9.663
+crossing,floor-1e-2,32,0.03126,7.889
+crossing,floor-1e-2,64,0.01564,6.986
+fit,engine,,7.270,24.991
+fit,perm-count,,7.452,25.503
+fit,perm-run,,6.703,24.318
+fit,recompute,,6.902,42.367
+fit,fishpye,,6.831,42.722
+fit,floor-1e-2,,6.799,41.188
+plain,loop without link test,128,,4.671
+plain-median,loop without link test,128,,4.686
+plain,loop with link test,128,,4.830
+plain-median,loop with link test,128,,4.841
+plain,engine cursor,128,,7.592
+plain-median,engine cursor,128,,7.643

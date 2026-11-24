@@ -1,0 +1,11 @@
+[package]
+name = "groxel"
+version = "0.0.1"
+publish = false
+description = "Voxels whose neighbours are whatever you say they are: rooms, seams and a ray tracer for spaces that loop, which agrees bit for bit with the same ray in the unrolled space."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]

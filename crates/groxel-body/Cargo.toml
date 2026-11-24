@@ -1,0 +1,12 @@
+[package]
+name = "groxel-body"
+version = "0.0.1"
+publish = false
+description = "A walking body for groxel worlds: a box with gravity and stairs, whose idea of up turns with the seams it crosses."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+groxel = { path = "../groxel", version = "0.0.1" }

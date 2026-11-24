@@ -1,0 +1,15 @@
+[package]
+name = "groxel-app"
+version = "0.0.1"
+publish = false
+description = "The groxel demo worlds (a gallery, a well, a tower and a hall that cannot be built) and a headless camera that takes stills of them."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+groxel = { path = "../groxel", version = "0.0.1" }
+groxel-body = { path = "../groxel-body", version = "0.0.1" }
+groxel-light = { path = "../groxel-light", version = "0.0.1" }
+groxel-render = { path = "../groxel-render", version = "0.0.1" }

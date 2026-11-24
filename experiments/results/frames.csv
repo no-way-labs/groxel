@@ -1,0 +1,9 @@
+method,pixels,differ,other_surface,worst_view,rays_differ
+engine,1843200,0,0,0,0
+perm-run,1843200,0,0,0,0
+recompute,1843200,16,8,4,828579
+fishpye,1843200,14,10,5,863577
+floor-1e-3,1843200,164,160,32,905427
+floor-1e-2,1843200,1511,1489,313,947448
+cell-matrix,1843200,18,9,6,1305172
+# mean_crossings,8.394,max_crossings,501,no_hit,217

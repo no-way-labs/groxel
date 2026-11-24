@@ -1,0 +1,13 @@
+[package]
+name = "groxel-render"
+version = "0.0.1"
+publish = false
+description = "A CPU ray tracer for groxel worlds: one primary ray and one shadow ray per sample, both through seams."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+groxel = { path = "../groxel", version = "0.0.1" }
+groxel-light = { path = "../groxel-light", version = "0.0.1" }

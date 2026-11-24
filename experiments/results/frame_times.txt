@@ -1,0 +1,5 @@
+gallery: 143.4 ms on one thread, 26.6 ms on all cores (640 x 360, one sample a pixel)
+mirror: 162.0 ms on one thread, 29.8 ms on all cores (640 x 360, one sample a pixel)
+well: 180.1 ms on one thread, 33.0 ms on all cores (640 x 360, one sample a pixel)
+tower: 445.6 ms on one thread, 80.1 ms on all cores (640 x 360, one sample a pixel)
+hall: 170.7 ms on one thread, 31.6 ms on all cores (640 x 360, one sample a pixel)

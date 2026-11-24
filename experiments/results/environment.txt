@@ -1,0 +1,11 @@
+date:     2026-11-24T23:06:29Z
+machine:  Darwin 24.6.0 arm64
+cpu:      Apple M3
+rustc:    rustc 1.99.0 (b940084d7 2026-09-28) (Homebrew)
+cargo:    cargo 1.99.0 (5f94df478 2026-08-27) (Homebrew)
+profile:  release, as set in Cargo.toml
+flags:    RUSTFLAGS=(unset)
+seeds:    crossing_error confirmation 3c6ef372fe94f82b a54ff53a5f1d36f1
+seeds:    frames confirmation 1f83d9abfb41bd6b 5be0cd19137e2179
+seeds:    design seeds are constants at the top of each program
+commit:   none (no commit to name)

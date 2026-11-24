@@ -1,0 +1,53 @@
+Part 1: empty quarter-turn spaces, 4000 rays of 1000 steps
+method       side cross/step   ns/step
+engine          4     0.2500     13.25
+engine          8     0.1250     10.90
+engine         16     0.0625      9.02
+engine         32     0.0312      7.88
+engine         64     0.0156      7.40
+
+perm-count      4     0.2500     13.54
+perm-count      8     0.1250     11.19
+perm-count     16     0.0625      9.24
+perm-count     32     0.0312      8.10
+perm-count     64     0.0156      7.55
+
+perm-run        4     0.2500     12.55
+perm-run        8     0.1250     10.19
+perm-run       16     0.0625      8.39
+perm-run       32     0.0312      7.32
+perm-run       64     0.0156      6.84
+
+recompute       4     0.2500     17.09
+recompute       8     0.1250     12.95
+recompute      16     0.0625      9.87
+recompute      32     0.0312      8.00
+recompute      64     0.0156      7.12
+
+fishpye         4     0.2500     17.15
+fishpye         8     0.1250     12.85
+fishpye        16     0.0625      9.79
+fishpye        32     0.0312      7.99
+fishpye        64     0.0156      7.07
+
+floor-1e-2      4     0.2504     16.71
+floor-1e-2      8     0.1251     12.72
+floor-1e-2     16     0.0625      9.66
+floor-1e-2     32     0.0313      7.89
+floor-1e-2     64     0.0156      6.99
+
+method       plain step ns extra per cross ns
+engine                7.27              24.99
+perm-count            7.45              25.50
+perm-run              6.70              24.32
+recompute             6.90              42.37
+fishpye               6.83              42.72
+floor-1e-2            6.80              41.19
+
+Part 2: a room of side 128 with no seams, 40000 rays from the middle, 31 repeats in turn
+                         steps   fastest    median   slowest
+loop without link test   4724287     4.671     4.686     4.830  ns/step
+loop with link test    4724287     4.830     4.841     4.950  ns/step
+engine cursor          4724287     7.592     7.643     7.753  ns/step
+
+wrote experiments/results/step_cost.csv

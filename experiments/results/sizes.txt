@@ -1,0 +1,19 @@
+type            bytes
+Orientation         1
+LatticeMap         16
+Seam               56
+Cell               16
+Pose               32
+Ray                40
+Cursor            136
+Hit                88
+Stamp               8
+
+per voxel of a room
+  core          2 bytes (material, link bits)
+  light         2 bytes (lamp, sky)
+  overlay       1 bit, and a hash-map entry per stamped voxel
+
+per seam
+  56 bytes for the record and 4 for its entry in the room's list,
+  whatever the size of the rectangle of faces it covers

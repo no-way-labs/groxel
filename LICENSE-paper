@@ -1,0 +1,19 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright (c) 2026 Keston Aquino-Michaels, No Way Labs
+
+The paper and what it is built from are licensed under the Creative Commons
+Attribution 4.0 International License: the manuscript, its LaTeX source, its
+tables and its figures in `paper/`, the pictures and documents in `docs/`, and
+the results in `experiments/results/`.
+
+You are free to share and adapt this material for any purpose, including
+commercially, provided you give appropriate credit, link to the license, and
+indicate if changes were made.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:           https://creativecommons.org/licenses/by/4.0/
+
+All source code in this repository (the crates in `crates/`, the programs and
+scripts in `experiments/`, `paper/stills.sh` and `reproduce.sh`) is licensed
+separately under the MIT License; see LICENSE.

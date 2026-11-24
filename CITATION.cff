@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the paper."
+title: "Groxel: voxel worlds with glued faces, traversed by permuting the stepping state"
+type: software
+authors:
+  - family-names: Aquino-Michaels
+    given-names: Keston
+    affiliation: No Way Labs
+repository-code: "https://github.com/no-way-labs/groxel"
+license: MIT
+preferred-citation:
+  type: report
+  title: "Groxel: voxel worlds with glued faces, traversed by permuting the stepping state"
+  authors:
+    - family-names: Aquino-Michaels
+      given-names: Keston
+      affiliation: No Way Labs
+  year: 2026
+  url: "https://github.com/no-way-labs/groxel"

@@ -1,0 +1,11 @@
+quarter-turn space, side 8, density 0.02, 8 views of 640 x 360, world seed 0x510e527fade682d1, camera seed 0x9b05688c2b3e6c1f
+1843200 pixels; a ray crosses 8.4 seams on average and at most 501; 217 rays stop nowhere within 4000 steps
+method         differ   surface worst view rays differ
+engine              0         0          0           0
+perm-run            0         0          0           0
+recompute          16         8          4      828579
+fishpye            14        10          5      863577
+floor-1e-3        164       160         32      905427
+floor-1e-2       1511      1489        313      947448
+cell-matrix        18         9          6     1305172
+wrote experiments/results/frames.csv
