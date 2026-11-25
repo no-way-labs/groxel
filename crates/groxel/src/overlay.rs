@@ -226,6 +226,21 @@ impl Overlay {
         self.at(cell.room, (c[0] + d[0] * (c[1] + d[1] * c[2])) as usize)
     }
 
+    /// Every stamped voxel and what is stamped there, in no particular
+    /// order. Cheaper than [`get`](Overlay::get) at every voxel of the world
+    /// when a few figures are stamped into large rooms.
+    pub fn iter(&self) -> impl Iterator<Item = (Cell, Stamp)> + '_ {
+        self.rooms.iter().enumerate().flat_map(|(r, over)| {
+            let d = over.dims;
+            over.stamps.iter().map(move |(&i, &stamp)| {
+                let i = i as i32;
+                let at = ivec3(i % d[0], i / d[0] % d[1], i / (d[0] * d[1]));
+                let room = RoomId(r as u32);
+                (Cell { room, at }, stamp)
+            })
+        })
+    }
+
     /// What is stamped at a voxel given by its index in its room.
     pub(crate) fn at(&self, room: RoomId, index: usize) -> Option<Stamp> {
         let over = &self.rooms[room.0 as usize];
