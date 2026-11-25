@@ -4,10 +4,10 @@
 //! back to front.
 
 use crate::mat;
-use groxel::{EntityId, Orientation, Overlay, Sprite, World};
+use groxel::{EntityId, Orientation, Overlay, Placement, Sprite, World, vec3};
 use groxel_body::Body;
 use std::f32::consts::FRAC_PI_2;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 const FIGURE_KEY: [(char, u8); 3] = [('R', mat::ROBE), ('H', mat::COWL), ('F', mat::SKIN)];
 const YOU_KEY: [(char, u8); 3] = [('R', mat::YOU), ('H', mat::YOU_DARK), ('F', mat::SKIN)];
@@ -89,4 +89,47 @@ pub fn put_body(
         .then(body.frame)
         .then(turn);
     overlay.put(world, there, orient, sprite, entity);
+}
+
+/// Place a sprite where a body stands, exactly: at the body's position, not
+/// the voxel it is in, and facing its heading, not the nearest quarter
+/// turn. So a figure that walks or turns moves smoothly. `scale` is sprite
+/// voxels to one world voxel: 1 draws [`put_body`]'s figure at its size.
+///
+/// The middle of the sprite's foot (its origin voxel's bottom face) goes at
+/// the body's feet, and the sprite is turned by the body's frame and its
+/// heading, as [`put_body`] turns it. It is placed from the body's middle,
+/// so a figure half way through a door is drawn on both sides.
+pub fn place_body(
+    overlay: &mut Overlay,
+    world: &World,
+    body: &Body,
+    sprite: &Arc<Sprite>,
+    scale: f32,
+    entity: EntityId,
+) {
+    let up = body.up_face().normal();
+    let up = vec3(up[0] as f32, up[1] as f32, up[2] as f32);
+    let half = body.height * 0.5;
+    let o = sprite.origin();
+    // The heading turns the sprite about its own +y, as a quarter turn of
+    // `put_body` does: +x to (cos, 0, -sin), +z to (sin, 0, cos).
+    let (s, c) = body.yaw.sin_cos();
+    let local = [vec3(c, 0.0, -s), vec3(0.0, 1.0, 0.0), vec3(s, 0.0, c)];
+    overlay.place(
+        world,
+        sprite,
+        &Placement {
+            at: body.anchor(),
+            pos: body.pos + up * half,
+            anchor: vec3(
+                o[0] as f32 + 0.5,
+                o[1] as f32 + half * scale,
+                o[2] as f32 + 0.5,
+            ),
+            axes: local.map(|a| body.frame.apply_f(a)),
+            scale,
+        },
+        entity,
+    );
 }

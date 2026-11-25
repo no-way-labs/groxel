@@ -1,7 +1,9 @@
 //! The colour along one ray.
 
 use crate::{Env, Frame, Material, Pattern, Renderer};
-use groxel::{Cell, Face, Hit, HitKind, IVec3, Orientation, Ray, Skip, TraceOpts, Vec3, trace};
+use groxel::{
+    Cell, Face, Hit, HitKind, IVec3, Orientation, Part, Ray, Skip, TraceOpts, Vec3, trace,
+};
 use groxel_light::REACH;
 
 /// How far a ray must have gone before the viewer's own voxels are drawn.
@@ -41,6 +43,10 @@ impl Renderer {
             HitKind::Sky => return sky(env, h.dir),
             HitKind::Far => return env.haze,
             HitKind::Solid => {}
+        }
+        if let Some(part) = h.part {
+            let col = self.shade_part(frame, &h, part, env, footprint);
+            return fogged(col, env, h.t, s.max_t);
         }
 
         let m = self.material(h.material);
@@ -113,30 +119,137 @@ impl Renderer {
             }
 
             if s.ink > 0.0 {
-                let width = (size * 0.9).max(0.085);
-                let strength = s.ink * (0.085 / width * 1.6).min(1.0);
-                let mut line = 0.0f32;
-                for k in 0..4 {
-                    if !side[k] && !above[k] {
-                        line = line.max(1.0 - edge[k] / width);
-                    }
-                }
-                if line > 0.0 {
-                    let k = 1.0 - strength * (line * 1.5).min(1.0);
-                    for c in &mut col {
-                        *c *= k;
-                    }
-                }
+                ink(&mut col, s.ink, size, edge, side, above);
             }
         }
 
-        let fade = smoothstep(s.max_t * 0.7, s.max_t, h.t);
-        let fog = (1.0 - (-env.fog * h.t).exp()).max(fade);
-        for (c, haze) in col.iter_mut().zip(env.haze) {
-            *c += (haze - *c) * fog;
+        fogged(col, env, h.t, s.max_t)
+    }
+
+    /// The colour of a placed sprite where a ray met it. It is lit as a
+    /// world face is, by the flooded light of the world voxel it is in, by
+    /// the sky as its normal faces, and by the sun unless a traced ray finds
+    /// the sun hidden; its outlines are drawn by the same rule, on the
+    /// sprite's own voxels.
+    fn shade_part(
+        &self,
+        frame: &Frame,
+        h: &Hit,
+        part: Part,
+        env: &Env,
+        footprint: f32,
+    ) -> [f32; 3] {
+        let s = &self.settings;
+        let overlay = frame.overlay.expect("a placed sprite is in the overlay");
+        let piece = overlay.piece(part.piece);
+        let sprite = &piece.sprite;
+        let m = self.material(h.material);
+        let a = part.face.axis();
+        let (ua, va) = ((a + 1) % 3, (a + 2) % 3);
+        let v = part.voxel;
+        let ps = piece.to_sprite(h.point());
+        let fu = (ps[ua] - v[ua] as f32).clamp(0.0, 1.0);
+        let fv = (ps[va] - v[va] as f32).clamp(0.0, 1.0);
+        // How wide a pixel is there, in the sprite's voxels.
+        let size = footprint * h.t * piece.scale();
+        let edge = [fu, 1.0 - fu, fv, 1.0 - fv];
+        let mut col = albedo(m, v, a, edge, size);
+        if m.glow > 0.0 {
+            for c in &mut col {
+                *c *= m.glow;
+            }
+            return col;
+        }
+
+        let filled = |c: IVec3| sprite.material(c) != 0;
+        let along = |axis: usize, d: i32| {
+            let mut c = IVec3::ZERO;
+            c[axis] = d;
+            c
+        };
+        let n = part.face.normal();
+        let steps = [along(ua, -1), along(ua, 1), along(va, -1), along(va, 1)];
+        let side = steps.map(|d| filled(v + d));
+        let above = steps.map(|d| filled(v + n + d));
+
+        // The flood has no direction of its own; a sprite's face is taken to
+        // look neither toward its source nor away (a world face's middle
+        // case).
+        const FACING: f32 = 0.72;
+        let level = |x: u8| {
+            let k = x as f32 / REACH as f32;
+            k * k * k
+        };
+        let lamp = level(frame.light.lamp(h.cell)) * FACING;
+        let skyl = level(frame.light.sky(h.cell));
+        let normal = part.normal;
+        let sun = Vec3(env.sun_dir);
+        let mut lit = normal.dot(sun).max(0.0) * (skyl * 4.0).min(1.0);
+        if lit > 0.001 && s.shadows && part_in_shadow(frame, h, normal, sun) {
+            lit = 0.0;
+        }
+        let hemi = normal[1] * 0.5 + 0.5;
+        for (i, c) in col.iter_mut().enumerate() {
+            let ambient = (env.ground_light[i] + (env.sky_light[i] - env.ground_light[i]) * hemi)
+                * skyl
+                * FACING;
+            *c *= ambient + env.lamp[i] * lamp + env.floor + env.sun[i] * lit;
+        }
+        if s.ink > 0.0 {
+            ink(&mut col, s.ink, size, edge, side, above);
         }
         col
     }
+}
+
+/// Darken a face's colour along its outlines: edges with nothing beside
+/// the face to continue it and nothing in front to cover it.
+fn ink(col: &mut [f32; 3], ink: f32, size: f32, edge: [f32; 4], side: [bool; 4], above: [bool; 4]) {
+    let width = (size * 0.9).max(0.085);
+    let strength = ink * (0.085 / width * 1.6).min(1.0);
+    let mut line = 0.0f32;
+    for k in 0..4 {
+        if !side[k] && !above[k] {
+            line = line.max(1.0 - edge[k] / width);
+        }
+    }
+    if line > 0.0 {
+        let k = 1.0 - strength * (line * 1.5).min(1.0);
+        for c in col {
+            *c *= k;
+        }
+    }
+}
+
+/// Fade a colour toward the room's haze with distance.
+fn fogged(mut col: [f32; 3], env: &Env, t: f32, max_t: f32) -> [f32; 3] {
+    let fade = smoothstep(max_t * 0.7, max_t, t);
+    let fog = (1.0 - (-env.fog * t).exp()).max(fade);
+    for (c, haze) in col.iter_mut().zip(env.haze) {
+        *c += (haze - *c) * fog;
+    }
+    col
+}
+
+/// Is the sun hidden from a point on a placed sprite? The ray starts just
+/// off the surface, in the world voxel the sprite reaches into.
+fn part_in_shadow(frame: &Frame, h: &Hit, normal: Vec3, sun: Vec3) -> bool {
+    let at = h.cell.at;
+    let mut origin = h.point() + normal * 0.003;
+    for i in 0..3 {
+        origin[i] = origin[i].clamp(at[i] as f32 + 1e-4, at[i] as f32 + 1.0 - 1e-4);
+    }
+    let ray = Ray {
+        start: h.cell,
+        origin,
+        dir: sun,
+    };
+    let opts = TraceOpts {
+        max_t: 140.0,
+        max_steps: 700,
+        skip: None,
+    };
+    trace(frame, ray, &opts).kind == HitKind::Solid
 }
 
 /// True if light and outlines should treat the voxel as filled: the world is

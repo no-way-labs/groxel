@@ -43,9 +43,9 @@ mod vec;
 mod world;
 
 pub use orient::{Face, Orientation};
-pub use overlay::{EntityId, Overlay, Scene, Skip, Space, Sprite, Stamp};
+pub use overlay::{EntityId, Overlay, Piece, Placement, Scene, Skip, Space, Sprite, Stamp};
 pub use pose::{Pose, Stopped, Travel};
-pub use trace::{Ahead, Cursor, Hit, HitKind, Moved, Ray, TraceOpts, trace, visit};
+pub use trace::{Ahead, Cursor, Hit, HitKind, Moved, Part, Ray, TraceOpts, trace, visit};
 pub use vec::{IVec3, Vec3, ivec3, vec3};
 pub use world::{
     Cell, FaceRect, LatticeMap, Room, RoomId, Seam, SeamError, SeamId, SeamKind, World,
