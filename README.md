@@ -145,6 +145,7 @@ The core's main types:
 | `trace`, `visit` | First solid voxel along a ray; or a callback for every voxel on the way |
 | `Pose` | A voxel, a point in it and an orientation: where a thing is. `advance` moves it through seams |
 | `Overlay`, `Sprite` | A frame's moving voxels, placed by walking the lattice; a figure in a doorway is in both rooms |
+| `Overlay::place`, `Placement` | A sprite at any point, turned any way, at any size: each voxel it reaches into holds the map from its room to the sprite, and a ray is traced through the sprite's own grid inside that voxel |
 
 ## How it works
 
@@ -183,6 +184,11 @@ and the whole one. The tests apply the property to each kind of thing that moves
 - **Light.** Every voxel has the lamp light and sky light it has in the whole world.
 - **Sprites.** A sprite placed across the cut occupies the same voxels, and rays see it the same,
   including rays that look past one sprite as its viewer would.
+- **Placed sprites.** A sprite placed off the lattice, turned and scaled, across the cut, is met
+  by 400 rays per orientation at the same sprite voxel and face as in the whole world, at a
+  distance within 0.001 and with the same normal read in each room's frame. Its pieces are maps in
+  floating point, so this is agreement to rounding, not bit for bit. On the lattice, placing a
+  sprite and stamping it give the same hits.
 - **Bodies.** A body that walks across, climbs a step and goes round a post ends where it ends in
   the whole world, standing on the floor of the turned half with its head where that half's
   "up" now is.

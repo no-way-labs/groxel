@@ -13,7 +13,7 @@
 //! voxels long the roundings add up to a tenth of a voxel.
 
 use crate::orient::{Face, Orientation};
-use crate::overlay::{EntityId, Overlay, Skip, Space, Stamp};
+use crate::overlay::{EntityId, Overlay, Piece, Skip, Space, Stamp};
 use crate::vec::{IVec3, Vec3};
 use crate::world::{Cell, RoomId, SeamId, World};
 use std::ops::ControlFlow;
@@ -205,6 +205,20 @@ impl<'w> Cursor<'w> {
         self.overlay?.at(self.room, self.index)
     }
 
+    /// The pieces of placed sprites that reach into the voxel the cursor is
+    /// in, by number in the overlay.
+    pub fn parts(&self) -> &'w [u32] {
+        match self.overlay {
+            Some(overlay) => overlay.parts_at(self.room, self.index),
+            None => &[],
+        }
+    }
+
+    /// The overlay the cursor sees, if any.
+    pub fn overlay(&self) -> Option<&'w Overlay> {
+        self.overlay
+    }
+
     /// The axis whose face comes next. When two faces are equally near (the
     /// line passes through an edge or a corner) the axis that was later in
     /// the starting frame goes first. Deciding by the starting frame, not the
@@ -376,6 +390,143 @@ pub struct Hit {
     pub crossings: u32,
     /// Voxels visited.
     pub steps: u32,
+    /// For a solid hit on a placed sprite: where on it. `cell` and `from`
+    /// are then both the empty world voxel the sprite reaches into.
+    pub part: Option<Part>,
+}
+
+/// Where a ray met a placed sprite (see [`Overlay::place`]).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Part {
+    /// The piece, by number in the overlay.
+    pub piece: u32,
+    /// The sprite voxel.
+    pub voxel: IVec3,
+    /// The face of it the ray came in through, in the sprite's axes.
+    pub face: Face,
+    /// That face's outward normal, a unit vector in the hit voxel's room.
+    pub normal: Vec3,
+}
+
+/// Where a ray first meets a piece's sprite between distances `t0` and
+/// `t1`: the distance, the sprite voxel and the face of it the ray came in
+/// through. The ray is in the piece's room's frame. A ray whose origin is
+/// inside a filled sprite voxel (`t0` is 0 there) does not see that voxel.
+///
+/// When `t0` is past the origin and the sprite's box began earlier, the
+/// voxel the ray is in at `t0` counts as met at `t0`, through the face of
+/// it the ray is crossing there: the world voxel the trace has just entered
+/// begins on that face. Had the ray been inside that sprite voxel before,
+/// the trace would have found it in an earlier world voxel.
+pub fn meet(
+    piece: &Piece,
+    origin: Vec3,
+    dir: Vec3,
+    t0: f32,
+    t1: f32,
+) -> Option<(f32, IVec3, Face)> {
+    let o = piece.to_sprite(origin);
+    let d = piece.dir_to_sprite(dir);
+    let dims = piece.sprite.dims();
+    // Clip to the sprite's box.
+    let (mut ta, mut tb) = (t0, t1);
+    let mut came_in = None;
+    for i in 0..3 {
+        if d[i] == 0.0 {
+            if o[i] < 0.0 || o[i] >= dims[i] as f32 {
+                return None;
+            }
+            continue;
+        }
+        let inv = 1.0 / d[i];
+        let (mut near, mut far) = (-o[i] * inv, (dims[i] as f32 - o[i]) * inv);
+        if near > far {
+            std::mem::swap(&mut near, &mut far);
+        }
+        if near > ta {
+            ta = near;
+            came_in = Some(i);
+        }
+        tb = tb.min(far);
+    }
+    if ta >= tb {
+        return None;
+    }
+    // Step through the sprite's voxels from where the ray enters the box.
+    let p = o + d * ta;
+    let mut v = IVec3(std::array::from_fn(|i| {
+        (p[i].floor() as i32).clamp(0, dims[i] - 1)
+    }));
+    let face_on = |i: usize| Face::new(i, d[i] < 0.0);
+    let mut face = match came_in {
+        Some(i) => {
+            v[i] = if d[i] > 0.0 { 0 } else { dims[i] - 1 };
+            face_on(i)
+        }
+        // Inside the box already: the face being crossed is the one whose
+        // boundary the point is nearest, on the side the ray comes from.
+        None => {
+            let gap = |i: usize| {
+                if d[i] > 0.0 {
+                    p[i] - v[i] as f32
+                } else if d[i] < 0.0 {
+                    (v[i] + 1) as f32 - p[i]
+                } else {
+                    f32::INFINITY
+                }
+            };
+            let i = (0..3)
+                .min_by(|&a, &b| gap(a).total_cmp(&gap(b)))
+                .expect("three axes");
+            face_on(i)
+        }
+    };
+    let step: [i32; 3] = std::array::from_fn(|i| {
+        if d[i] > 0.0 {
+            1
+        } else if d[i] < 0.0 {
+            -1
+        } else {
+            0
+        }
+    });
+    let mut next: [f32; 3] = std::array::from_fn(|i| match step[i] {
+        1 => ((v[i] + 1) as f32 - o[i]) / d[i],
+        -1 => (v[i] as f32 - o[i]) / d[i],
+        _ => f32::INFINITY,
+    });
+    let delta: [f32; 3] = std::array::from_fn(|i| {
+        if step[i] == 0 {
+            f32::INFINITY
+        } else {
+            (1.0 / d[i]).abs()
+        }
+    });
+    let mut t = ta;
+    let mut inside = came_in.is_none() && t0 <= 0.0;
+    loop {
+        if !inside && piece.sprite.material(v) != 0 {
+            return Some((t, v, face));
+        }
+        inside = false;
+        let a = if next[0] <= next[1] && next[0] <= next[2] {
+            0
+        } else if next[1] <= next[2] {
+            1
+        } else {
+            2
+        };
+        t = next[a];
+        if t > tb {
+            return None;
+        }
+        v[a] += step[a];
+        if v[a] < 0 || v[a] >= dims[a] {
+            return None;
+        }
+        next[a] += delta[a];
+        face = Face::new(a, step[a] < 0);
+    }
 }
 
 impl Hit {
@@ -385,33 +536,91 @@ impl Hit {
     }
 }
 
-/// Follow a ray to the first solid voxel.
+/// The nearest placed sprite in the cursor's voxel between distances `t0`
+/// and `t1`, with its material and entity, past the skipped entity.
+fn nearest_part(
+    cur: &Cursor,
+    opts: &TraceOpts,
+    t0: f32,
+    t1: f32,
+) -> Option<(f32, Part, u8, EntityId)> {
+    let overlay = cur.overlay()?;
+    let mut best: Option<(f32, Part, u8, EntityId)> = None;
+    for &n in cur.parts() {
+        let piece = overlay.piece(n);
+        let Some((t, voxel, face)) = meet(piece, cur.origin, cur.dir, t0, t1) else {
+            continue;
+        };
+        if opts
+            .skip
+            .is_some_and(|s| piece.entity == s.entity && t < s.near)
+        {
+            continue;
+        }
+        if best.is_none_or(|b| t < b.0) {
+            let part = Part {
+                piece: n,
+                voxel,
+                face,
+                normal: piece.normal(face),
+            };
+            best = Some((t, part, piece.sprite.material(voxel), piece.entity));
+        }
+    }
+    best
+}
+
+/// Follow a ray to the first solid voxel, or the first placed sprite.
+///
+/// A placed sprite is looked for in the voxel the ray starts in as well as
+/// in each it enters, over the stretch of the ray inside that voxel. A
+/// stamped voxel is looked for only in the voxels the ray enters.
 pub fn trace(space: &(impl Space + ?Sized), ray: Ray, opts: &TraceOpts) -> Hit {
     let mut cur = Cursor::new(space, ray);
     let mut steps = 0;
-    let done = |cur: &Cursor, kind, face, from, via, t, steps| Hit {
-        kind,
-        cell: cur.cell(),
-        face,
-        material: if kind == HitKind::Solid {
-            cur.material()
-        } else {
-            0
-        },
-        entity: if kind == HitKind::Solid {
-            cur.stamp().map(|stamp| stamp.entity)
-        } else {
-            None
-        },
-        t,
-        origin: cur.origin,
-        dir: cur.dir,
-        frame: cur.frame,
-        from,
-        via,
-        crossings: cur.crossings,
-        steps,
-    };
+    let done =
+        |cur: &Cursor, kind, face, from, via, t, steps, part: Option<(f32, Part, u8, EntityId)>| {
+            Hit {
+                kind,
+                cell: cur.cell(),
+                face,
+                material: match part {
+                    Some(p) => p.2,
+                    None if kind == HitKind::Solid => cur.material(),
+                    None => 0,
+                },
+                entity: match part {
+                    Some(p) => Some(p.3),
+                    None if kind == HitKind::Solid => cur.stamp().map(|stamp| stamp.entity),
+                    None => None,
+                },
+                t,
+                origin: cur.origin,
+                dir: cur.dir,
+                frame: cur.frame,
+                from,
+                via,
+                crossings: cur.crossings,
+                steps,
+                part: part.map(|p| p.1),
+            }
+        };
+    if !cur.parts().is_empty() {
+        let end = cur.next_t().min(opts.max_t);
+        if let Some(p) = nearest_part(&cur, opts, cur.t, end) {
+            let here = cur.cell();
+            return done(
+                &cur,
+                HitKind::Solid,
+                Face::PosX,
+                here,
+                None,
+                p.0,
+                steps,
+                Some(p),
+            );
+        }
+    }
     loop {
         let next_t = cur.next_t();
         if next_t > opts.max_t || next_t == f32::INFINITY || steps >= opts.max_steps {
@@ -424,13 +633,41 @@ pub fn trace(space: &(impl Space + ?Sized), ray: Ray, opts: &TraceOpts) -> Hit {
                 None,
                 next_t.min(opts.max_t),
                 steps,
+                None,
             );
         }
         let from = cur.cell();
         match cur.advance() {
-            Moved::Left => return done(&cur, HitKind::Sky, Face::PosX, from, None, next_t, steps),
+            Moved::Left => {
+                return done(
+                    &cur,
+                    HitKind::Sky,
+                    Face::PosX,
+                    from,
+                    None,
+                    next_t,
+                    steps,
+                    None,
+                );
+            }
             Moved::Entered { through, via } => {
                 steps += 1;
+                if cur.material() == 0 && !cur.parts().is_empty() {
+                    let end = cur.next_t().min(opts.max_t);
+                    if let Some(p) = nearest_part(&cur, opts, cur.t, end) {
+                        let here = cur.cell();
+                        return done(
+                            &cur,
+                            HitKind::Solid,
+                            through,
+                            here,
+                            via,
+                            p.0,
+                            steps,
+                            Some(p),
+                        );
+                    }
+                }
                 if cur.material() != 0 {
                     // The viewer's own voxels do not count until the ray
                     // has gone some way. The rule reads the distance and
@@ -443,7 +680,7 @@ pub fn trace(space: &(impl Space + ?Sized), ray: Ray, opts: &TraceOpts) -> Hit {
                         _ => false,
                     };
                     if !passed {
-                        return done(&cur, HitKind::Solid, through, from, via, cur.t, steps);
+                        return done(&cur, HitKind::Solid, through, from, via, cur.t, steps, None);
                     }
                 }
             }

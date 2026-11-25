@@ -52,5 +52,5 @@ mod figures;
 mod palette;
 
 pub use demo::{Demo, Spot, Stamped, VIEWER, Walker, camera};
-pub use figures::{monk, put_body, you};
+pub use figures::{monk, place_body, put_body, you};
 pub use palette::{glows, lin, norm, palette};

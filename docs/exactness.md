@@ -148,6 +148,12 @@ there in the cut world and continue in the uncut one.
 - **Shading.** A renderer computes on the hit point, which the argument does not cover. In the
   frame test (`crates/groxel-render/tests/render.rs`) no pixel of 248,832 differs from the whole
   world's frame, with a tolerance of 12 pixels a frame.
+- **Placed sprites.** A sprite placed with `Overlay::place` is off the lattice: each piece maps
+  its room's coordinates to the sprite's in floating point, and the tracer steps through the
+  sprite's grid on the carried origin and direction. Which world voxels a placed sprite reaches
+  into is decided on the lattice and is exact; where a ray meets the sprite inside them is not
+  covered by the argument. The tests (`crates/groxel/tests/placed.rs`) find the same sprite voxel
+  and face as in the whole world, at a distance within 0.001.
 
 ## Evidence
 
