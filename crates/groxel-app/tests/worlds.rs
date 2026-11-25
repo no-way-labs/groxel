@@ -85,6 +85,12 @@ impl Fnv {
 // earlier implementation of this engine, by a program that walks every voxel
 // of every room. They are hashes, so a failure says only that something
 // differs; the other tests say what.
+//
+// Three numbers are not the reference build's: the sky light of the gallery,
+// the well and the hall. The reference build let no sky light through a seam
+// out of an outdoors room, so the gallery was not lit through its door to
+// the tower, nor the well and the hall through their doors from the gallery.
+// They are now, and those three hashes were recorded again from this engine.
 
 /// What the reference build has in one room.
 struct Reference {
@@ -122,7 +128,7 @@ const REFERENCE: [Reference; 4] = [
         seam_faces: 456,
         seams: 0xb164_c765_5075_4765,
         lamp: 0x582d_01b9_474e_bbeb,
-        sky: 0xe49f_4491_96fc_5e4e,
+        sky: 0x4422_a920_2b4a_e547,
         env: 0x7f71_2c27_6a59_39c8,
     },
     Reference {
@@ -134,7 +140,7 @@ const REFERENCE: [Reference; 4] = [
         seam_faces: 3560,
         seams: 0x2247_c972_b28e_e07e,
         lamp: 0xc50a_a6f6_1056_c95d,
-        sky: 0x9127_1c8c_6d82_7e48,
+        sky: 0x74d2_c4dc_9961_a8d7,
         env: 0x2ed4_4993_9198_3135,
     },
     Reference {
@@ -158,7 +164,7 @@ const REFERENCE: [Reference; 4] = [
         seam_faces: 1000,
         seams: 0xc022_da7d_2a48_1c18,
         lamp: 0x477a_7a49_04c9_2c66,
-        sky: 0x764e_fb67_a135_334c,
+        sky: 0x14a8_3956_a762_e83c,
         env: 0x515f_02be_f3b9_b26a,
     },
 ];

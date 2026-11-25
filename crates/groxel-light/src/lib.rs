@@ -67,7 +67,8 @@ impl Light {
     /// Work out both kinds of light for the whole world.
     ///
     /// `glows` says which materials are lamps. `outdoors` says which rooms
-    /// are open air: every voxel of such a room has full sky light.
+    /// are open air: every voxel of such a room has full sky light, and it
+    /// spreads from there through seams into the rooms that are not.
     pub fn flood(
         world: &World,
         glows: impl Fn(u8) -> bool,
@@ -119,6 +120,27 @@ impl Light {
                 });
                 if open {
                     light.seed(world, cell, Field::Sky, &mut queue);
+                }
+            }
+        }
+        // It also comes through any seam out of an outdoors room into one
+        // that is not. The voxels on the outdoors side are already full, so
+        // they are queued as they are.
+        for seam in world.seams() {
+            let (from, to) = (seam.from.room, seam.to);
+            if !outdoors(from) || outdoors(to) {
+                continue;
+            }
+            let room = world.room(from);
+            let (lo, hi) = (seam.from.min, seam.from.max);
+            for z in lo[2]..=hi[2] {
+                for y in lo[1]..=hi[1] {
+                    for x in lo[0]..=hi[0] {
+                        let at = ivec3(x, y, z);
+                        if !room.is_solid(at) {
+                            queue.push((Cell { room: from, at }, REACH));
+                        }
+                    }
                 }
             }
         }

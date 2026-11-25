@@ -91,6 +91,49 @@ fn an_outdoors_room_is_all_sky() {
     );
 }
 
+/// A closed room whose only opening is a doorway glued to an outdoors room
+/// is lit by the sky through the doorway, as it would be through an
+/// opening onto its own open edge.
+#[test]
+fn sky_comes_through_a_seam_from_outdoors() {
+    let mut w = World::new();
+    let yard = w.add_room("yard", ivec3(6, 3, 3));
+    let hut = w.add_room("hut", ivec3(10, 5, 5));
+    // Walls all round; the inside is x 1..=8, y 1..=3, z 1..=3.
+    let r = w.room_mut(hut);
+    r.fill(ivec3(0, 0, 0), ivec3(9, 4, 4), 1);
+    r.fill(ivec3(1, 1, 1), ivec3(8, 3, 3), 0);
+    w.glue(
+        FaceRect {
+            room: yard,
+            min: ivec3(5, 0, 0),
+            max: ivec3(5, 2, 2),
+            face: Face::PosX,
+        },
+        FaceRect {
+            room: hut,
+            min: ivec3(1, 1, 1),
+            max: ivec3(1, 3, 3),
+            face: Face::NegX,
+        },
+        Orientation::IDENTITY,
+    )
+    .unwrap();
+
+    let light = Light::flood(&w, glows, |room| room == yard);
+    let at = |x| Cell {
+        room: hut,
+        at: ivec3(x, 2, 2),
+    };
+    assert_eq!(light.sky(at(1)), REACH - 1);
+    assert_eq!(light.sky(at(8)), REACH - 8);
+
+    // Shut the doorway and the hut is dark.
+    w.room_mut(yard).fill(ivec3(5, 0, 0), ivec3(5, 2, 2), 1);
+    let light = Light::flood(&w, glows, |room| room == yard);
+    assert_eq!(light.sky(at(1)), 0);
+}
+
 /// Cut a random world in two, turn one half each of the 48 ways and glue it
 /// back. Every voxel must have the lamp and sky light it has in the uncut
 /// world.
