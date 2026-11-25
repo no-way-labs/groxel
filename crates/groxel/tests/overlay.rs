@@ -1,8 +1,8 @@
 //! The overlay: sprites placed by walking the lattice, and rays that see them.
 
 use groxel::{
-    Cell, EntityId, HitKind, Orientation, Overlay, Ray, Scene, Skip, Sprite, TraceOpts, World,
-    ivec3, trace, vec3,
+    Cell, EntityId, Face, FaceRect, HitKind, Orientation, Overlay, Ray, Scene, Skip, Sprite, Stamp,
+    TraceOpts, World, ivec3, trace, vec3,
 };
 
 mod common;
@@ -60,6 +60,72 @@ fn a_sprite_does_not_replace_the_world_or_an_earlier_sprite() {
     // Past the edge of the room nothing is stamped.
     over.put(&w, at(5), Orientation::IDENTITY, &row, EntityId(3));
     assert_eq!(over.len(), 4);
+}
+
+/// `iter` lists exactly what `get` finds at every voxel, in rooms of
+/// different sizes, with sprites that straddle the seam between them.
+#[test]
+fn iter_lists_every_stamp_and_nothing_else() {
+    let mut w = World::new();
+    let a = w.add_room("a", ivec3(7, 5, 9));
+    let b = w.add_room("b", ivec3(4, 11, 6));
+    w.glue_up(
+        FaceRect {
+            room: a,
+            min: ivec3(6, 0, 0),
+            max: ivec3(6, 4, 3),
+            face: Face::PosX,
+        },
+        FaceRect {
+            room: b,
+            min: ivec3(0, 0, 0),
+            max: ivec3(3, 4, 0),
+            face: Face::NegZ,
+        },
+        Face::PosY,
+        Face::PosY,
+    )
+    .unwrap();
+    let bar = Sprite::new(ivec3(5, 2, 1), ivec3(2, 0, 0), (1..=10).collect());
+    let mut over = Overlay::new(&w);
+    assert_eq!(over.iter().count(), 0);
+    let mut rng = Rng::new(7);
+    for e in 0..12 {
+        let room = if e % 2 == 0 { a } else { b };
+        let d = w.room(room).dims();
+        let at = ivec3(rng.below(0, d[0]), rng.below(0, d[1]), rng.below(0, d[2]));
+        let turn = Orientation::all().nth(rng.below(0, 48) as usize).unwrap();
+        over.put(&w, Cell { room, at }, turn, &bar, EntityId(e));
+    }
+
+    let key = |(c, _): &(Cell, Stamp)| (c.room.0, c.at.0);
+    let mut listed: Vec<_> = over.iter().collect();
+    listed.sort_by_key(key);
+    let mut found = Vec::new();
+    for room in [a, b] {
+        let d = w.room(room).dims();
+        for z in 0..d[2] {
+            for y in 0..d[1] {
+                for x in 0..d[0] {
+                    let cell = Cell {
+                        room,
+                        at: ivec3(x, y, z),
+                    };
+                    if let Some(stamp) = over.get(cell) {
+                        found.push((cell, stamp));
+                    }
+                }
+            }
+        }
+    }
+    found.sort_by_key(key);
+    assert_eq!(listed, found);
+    assert_eq!(listed.len(), over.len());
+    assert!(listed.iter().any(|(c, _)| c.room == a));
+    assert!(listed.iter().any(|(c, _)| c.room == b));
+
+    over.clear();
+    assert_eq!(over.iter().count(), 0);
 }
 
 #[test]
