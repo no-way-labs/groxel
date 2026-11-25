@@ -328,3 +328,48 @@ fn a_body_stands_up_only_where_there_is_room() {
     assert_eq!(b.up_face(), Face::PosY);
     assert!(b.pos[0] > 24.0, "{:?}", b.pos);
 }
+
+/// A step that crosses a seam by a hair must leave the body's middle in a
+/// voxel of the room it arrives in. Carried over relative to the centre of
+/// the voxel beyond, a middle just past the near face of a room 48 deep
+/// lands at 47.5 + (0.5 - 1e-6), which rounds to 48.0 in f32: the room's far
+/// face, in no voxel. The eye was then outside the room and the next ray
+/// from it panicked.
+#[test]
+fn a_hairline_crossing_lands_inside_the_room() {
+    let mut w = World::new();
+    let id = floor_room(&mut w, "r", [8, 16, 48]);
+    w.wrap(id, 2).unwrap();
+    let back = Input {
+        forward: 1.0,
+        ..Default::default()
+    };
+    for k in 1..=40 {
+        let overshoot = k as f32 * 2.5e-7;
+        let mut b = Body::new(id, vec3(4.0, 1.0, 8.0));
+        b.yaw = std::f32::consts::PI;
+        b.walk_speed = 1.0;
+        settle(&mut b, &w);
+        b.pos[2] = 0.25 - overshoot;
+        b.update(&w, &back, 0.25);
+        assert_eq!(b.crossings, 1, "overshoot {overshoot}");
+        let room = w.room(id);
+        assert!(
+            room.contains(b.anchor().at),
+            "overshoot {overshoot}: middle at {:?}, outside the room",
+            b.pos
+        );
+        let view = b.view(&w);
+        assert!(room.contains(view.cell.at), "overshoot {overshoot}");
+        // The symptom: a ray from the eye.
+        trace(
+            &w,
+            Ray {
+                start: view.cell,
+                origin: view.pos,
+                dir: view.fwd,
+            },
+            &TraceOpts::default(),
+        );
+    }
+}
