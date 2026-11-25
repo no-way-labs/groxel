@@ -249,9 +249,11 @@ impl Body {
                     // Carried over relative to the middle's voxel, which
                     // keeps the arithmetic small.
                     let rel = turn.apply_f(self.pos - to.centre());
-                    self.pos = rel + seam.map.cell(to).centre();
+                    let arrive = seam.map.cell(to);
+                    self.pos = rel + arrive.centre();
                     self.frame = self.frame.then(turn);
                     self.room = seam.to;
+                    self.keep_middle_in(arrive);
                     self.crossings += 1;
                     self.tilt_from = turn.apply_f(self.tilt_from);
                     self.tilt_slide = turn.apply_f(self.tilt_slide);
@@ -266,6 +268,27 @@ impl Body {
             remaining -= s;
         }
         done
+    }
+
+    /// Rounding can put the middle on a face of the voxel it was carried
+    /// to and so in the next voxel along: a middle just past the near face
+    /// of a room 48 deep lands at `47.5 + (0.5 - 1e-6)`, which is `48.0` in
+    /// f32, the room's far face. The body's voxel is read from its position,
+    /// so move the position by single steps of f32 until the middle is back
+    /// in `arrive`. That is at most a few ulps.
+    fn keep_middle_in(&mut self, arrive: IVec3) {
+        for i in 0..3 {
+            for _ in 0..8 {
+                let at = self.anchor_of(self.pos).floor()[i];
+                if at > arrive[i] {
+                    self.pos[i] = next_toward(self.pos[i], f32::NEG_INFINITY);
+                } else if at < arrive[i] {
+                    self.pos[i] = next_toward(self.pos[i], f32::INFINITY);
+                } else {
+                    break;
+                }
+            }
+        }
     }
 
     /// Move along one of the body's own axes: 0 to its right at heading 0,
@@ -510,4 +533,19 @@ impl Body {
         let d = self.frame.inverse().apply_f(target - self.pos);
         d[0].atan2(d[2])
     }
+}
+
+/// The next f32 after `x` in the direction of `to`. (`f32::next_down` and
+/// `next_up` need Rust 1.86.)
+fn next_toward(x: f32, to: f32) -> f32 {
+    if x == to || x.is_nan() {
+        return x;
+    }
+    if x == 0.0 {
+        let tiny = f32::from_bits(1);
+        return if to > 0.0 { tiny } else { -tiny };
+    }
+    let bits = x.to_bits();
+    let away = (to > x) == (x > 0.0);
+    f32::from_bits(if away { bits + 1 } else { bits - 1 })
 }
